@@ -37,8 +37,8 @@ function myFunction(xml) {
 		for (var i = 0; i < 4; i++)
 		{
 	  // Obtenemos el título de la pregunta
-	  //var titulo = preguntas_tag[arrayaux[i]].getAttribute("title");
-	  var titulo=preguntas_tag[arrayaux[i]].getElementsByTagName("mattext")[0].childNodes[0].nodeValue;
+	  var titulo = preguntas_tag[arrayaux[i]].getAttribute("title");
+	  var descripcion=preguntas_tag[arrayaux[i]].getElementsByTagName("mattext")[0].childNodes[0].nodeValue;
 
 	  //Obtenemos el tipo de la pregunta
 	  var tipo=preguntas_tag[arrayaux[i]].getElementsByTagName("qtimetadatafield")[1].getElementsByTagName("fieldentry")[0].childNodes[0].nodeValue;
@@ -46,6 +46,7 @@ function myFunction(xml) {
 	  //Obtenemos el identificador de la pregunta
 	  id=preguntas_tag[arrayaux[i]].getAttribute("ident");
 
+	  var flag=0;
 	  
 	  var opciones="";
 
@@ -73,11 +74,60 @@ function myFunction(xml) {
 						//Obtenemos los puntos de cada opcion
 						var puntos=preguntas_tag[arrayaux[i]].getElementsByTagName("setvar");
 						opciones+=multiple(opciones_tag,id,puntos,i);
+					} 
+					else
+						//https://social.msdn.microsoft.com/Forums/es-ES/119aa457-11f6-408b-9c70-d368deabd597/javascript-saber-si-una-letra-esta-en-una-cadena-de-caracteres?forum=netfxwebes
+					if(tipo=="CLOZE QUESTION"){
+						var opciones_tag = preguntas_tag[arrayaux[i]].getElementsByTagName("mattext");
+						var nhuecos=preguntas_tag[arrayaux[i]].getElementsByTagName("render_fib");
+						var soloHuecos=preguntas_tag[arrayaux[i]].getElementsByTagName("render_choice"); //Etiqueta que aparece en preguntas con desplegables
+						var puntos=preguntas_tag[arrayaux[i]].getElementsByTagName("setvar");
+						var oposibles=preguntas_tag[arrayaux[i]].getElementsByTagName("varequal");
+						var sensibilidad = preguntas_tag[arrayaux[i]].getElementsByTagName("fieldentry")[5].childNodes[0].nodeValue; //Para conocer si es sensible o no a mayúsculas o la distancia de Levenshtein
+						descripcion="";
+						//Solo si son huecos de rellenar texto se crea la pregunta
+						if(soloHuecos.length==0){
+							descripcion="<form name=\"formulario\">"+preguntas_tag[arrayaux[i]].getElementsByTagName("mattext")[0].childNodes[0].nodeValue;
+							for (var w = 1; w < opciones_tag.length-nhuecos.length; w++)
+							{	
+								//Añadimos los huecos
+								//oposibles[w-1].childNodes[0].nodeValue
+								descripcion+="<input type=\"text\" name=\""+id+"\" tipo=\""+nhuecos[w-1].getAttribute("fibtype")+"\" puntos=\"\" sol=\"\" size=\"3\" maxlength=\""+parseInt(nhuecos[w-1].getAttribute("columns"))+"\"/>";
+								//Vamos añadiendo el resto de enunciado
+								descripcion+=opciones_tag[w].childNodes[0].nodeValue;
+								
+							}	
+							descripcion+="<input name=\"valida"+i+"\" type=\"button\" value=\"Validar\" onclick=\"puntuaHuecos("+id+","+i+")\"/><input name=\"borra"+i+"\" type=\"reset\" value=\"Borrar\" /></form>";
+													
+						}
+							  // Modificamos el contenido html del contenedor div
+								div_preguntas.innerHTML += "<p>" + titulo + "</p><p>" + descripcion + "</p>"+opciones;
+								
+								for (var q = 0; q < nhuecos.length; q++){
+									for (var k = 0; k < oposibles.length; k++){
+										if (oposibles[k].getAttribute("respident").indexOf(q) != -1){
+											//alert(oposibles[k].childNodes[0].nodeValue);
+											var attAnterior = document.getElementsByName(id)[q].getAttribute("sol");
+											var puntAnterior = document.getElementsByName(id)[q].getAttribute("puntos");
+											document.getElementsByName(id)[q].setAttribute("sol",attAnterior+oposibles[k].childNodes[0].nodeValue+",");
+											document.getElementsByName(id)[q].setAttribute("puntos",puntAnterior+preguntas_tag[arrayaux[i]].getElementsByTagName("setvar")[k].childNodes[0].nodeValue+",");
+											//preguntas_tag[arrayaux[i]].getElementsByTagName("setvar")[k].childNodes[0].nodeValue
+										}
+									}
+								}
+								//console.log(document);
+								flag=1; //Este flag nos permite que no se repita la pregunta de nuevo en el div_preguntas
 					}
 
 	  // Modificamos el contenido html del contenedor div
-	   div_preguntas.innerHTML += "<p>" + titulo + "</p>"+opciones;
-	
+	  if(flag == 0){
+	   div_preguntas.innerHTML += "<p>" + titulo + "</p><p>" + descripcion + "</p>"+opciones;
+	  }
+	  
+	  //Ponemos de nuevo el flag a 0
+		if(flag == 1){
+			flag=0;
+		}
 		}
 	//ponBoton();
 	}
@@ -137,7 +187,7 @@ function unica(opciones_tag,ident,pts,ent){
 	for (var j = 0; j < (opciones_tag.length-1)/2; j++){
 	opciones += "<input type=\"radio\" name=\""+ident+"\"puntos=\""+pts[vector[j]].childNodes[0].nodeValue+"\"/>"+opciones_tag[vector[j]+1].childNodes[0].nodeValue+"</br>";
 	}
-		opciones += "<input name=\"valida"+ent+"\" type=\"button\" value=\"Validar\" onclick=\"puntuar("+ident+","+ent+")\"/><input name=\"borra"+ent+"\" type=\"reset\" value=\"Borrar\" /><form>";
+		opciones += "<input name=\"valida"+ent+"\" type=\"button\" value=\"Validar\" onclick=\"puntuar("+ident+","+ent+")\"/><input name=\"borra"+ent+"\" type=\"reset\" value=\"Borrar\" /></form>";
 	return opciones;
 	
 }
@@ -167,10 +217,11 @@ function multiple(opciones_tag,ident,pts,ent){
 	for (var j = 0; j < (opciones_tag.length-1)/2; j++){
 	opciones += "<input type=\"checkbox\" name=\""+ident+"\" respondida=\""+respondidas[vector[j]]+"\" norespondida=\""+norespondidas[vector[j]]+"\"/>"+opciones_tag[vector[j]+1].childNodes[0].nodeValue+"</br>";
 	}
-		opciones += "<input name=\"valida"+ent+"\" type=\"button\" value=\"Validar\" onclick=\"puntuarMul("+ident+","+ent+")\"/><input name=\"borra"+ent+"\" type=\"reset\" value=\"Borrar\" /><form>";
+		opciones += "<input name=\"valida"+ent+"\" type=\"button\" value=\"Validar\" onclick=\"puntuarMul("+ident+","+ent+")\"/><input name=\"borra"+ent+"\" type=\"reset\" value=\"Borrar\" /></form>";
 	return opciones;
 
 }
+
 
 //Funcion para puntuar una pregunta unica
 function puntuar(iden, ent){
@@ -253,3 +304,89 @@ function puntuarNum(iden, ent, inf, sup){
 		alert("Tu puntuación es de: "+puntuacion);
 		return true;
 }
+
+//Funcion para puntuar una pregunta de rellenar huecos
+function puntuaHuecos(iden, ent){
+	var puntuacion=0;
+	//Obtenemos las soluciones de los huecos
+	var opcs=document.getElementsByName(iden[0].name);
+	
+	for(var i=0; i<opcs.length;i++){
+		//Comprobamos si el tipo es String o no
+		if(document.getElementsByName(iden[i].name)[i].getAttribute("tipo")=="String"){
+			if(normalize(iden[i].value).toLowerCase==normalize(opcs[i].getAttribute("sol")).toLowerCase){
+				puntuacion+=parseFloat(document.getElementsByName(iden[i].name)[i].getAttribute("puntos"));
+			}
+		}
+		//Si no es de tipo Decimal
+		if(iden[i].value==opcs[i].getAttribute("sol")){
+				puntuacion+=parseFloat(document.getElementsByName(iden[i].name)[i].getAttribute("puntos"));
+			}
+			//Deshabilitamos el cuadro de texto
+		document.getElementsByName(iden[i].name)[i].disabled = true;	
+	}
+				//Deshabilitamos los botones
+		document.getElementsByName("valida"+ent)[0].disabled = true;
+		document.getElementsByName("borra"+ent)[0].disabled = true;
+		alert("Tu puntuación es de: "+puntuacion);
+return true;	
+}
+
+//http://www.etnassoft.com/2011/03/03/eliminar-tildes-con-javascript/
+//Función utilizada para eliminar caracteres raros de una cadena de texto
+var normalize = (function() {
+  var from = "ÃÀÁÄÂÈÉËÊÌÍÏÎÒÓÖÔÙÚÜÛãàáäâèéëêìíïîòóöôùúüûÑñÇç", 
+      to   = "AAAAAEEEEIIIIOOOOUUUUaaaaaeeeeiiiioooouuuunncc",
+      mapping = {};
+ 
+  for(var i = 0, j = from.length; i < j; i++ )
+      mapping[ from.charAt( i ) ] = to.charAt( i );
+ 
+  return function( str ) {
+      var ret = [];
+      for( var i = 0, j = str.length; i < j; i++ ) {
+          var c = str.charAt( i );
+          if( mapping.hasOwnProperty( str.charAt( i ) ) )
+              ret.push( mapping[ c ] );
+          else
+              ret.push( c );
+      }      
+      return ret.join( '' );
+  }
+ 
+})();
+
+//https://gist.github.com/andrei-m/982927
+function getEditDistance (a, b){
+  if(a.length == 0) return b.length; 
+  if(b.length == 0) return a.length; 
+
+  var matrix = [];
+
+  // increment along the first column of each row
+  var i;
+  for(i = 0; i <= b.length; i++){
+    matrix[i] = [i];
+  }
+
+  // increment each column in the first row
+  var j;
+  for(j = 0; j <= a.length; j++){
+    matrix[0][j] = j;
+  }
+
+  // Fill in the rest of the matrix
+  for(i = 1; i <= b.length; i++){
+    for(j = 1; j <= a.length; j++){
+      if(b.charAt(i-1) == a.charAt(j-1)){
+        matrix[i][j] = matrix[i-1][j-1];
+      } else {
+        matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, // substitution
+                                Math.min(matrix[i][j-1] + 1, // insertion
+                                         matrix[i-1][j] + 1)); // deletion
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+};
