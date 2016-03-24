@@ -44,10 +44,10 @@ function myFunction(xml) {
 	  var tipo=preguntas_tag[arrayaux[i]].getElementsByTagName("qtimetadatafield")[1].getElementsByTagName("fieldentry")[0].childNodes[0].nodeValue;
 	  
 	  //Obtenemos el identificador de la pregunta
-	  id=preguntas_tag[arrayaux[i]].getAttribute("ident");
-
+	  var id=preguntas_tag[arrayaux[i]].getAttribute("ident");
+	
 	  var flag=0;
-	  
+
 	  var opciones="";
 
 		if(tipo=="SINGLE CHOICE QUESTION"){
@@ -83,7 +83,7 @@ function myFunction(xml) {
 						var soloHuecos=preguntas_tag[arrayaux[i]].getElementsByTagName("render_choice"); //Etiqueta que aparece en preguntas con desplegables
 						var puntos=preguntas_tag[arrayaux[i]].getElementsByTagName("setvar");
 						var oposibles=preguntas_tag[arrayaux[i]].getElementsByTagName("varequal");
-						var sensibilidad = preguntas_tag[arrayaux[i]].getElementsByTagName("fieldentry")[5].childNodes[0].nodeValue; //Para conocer si es sensible o no a mayúsculas o la distancia de Levenshtein
+						
 						descripcion="";
 						//Solo si son huecos de rellenar texto se crea la pregunta
 						if(soloHuecos.length==0){
@@ -91,12 +91,11 @@ function myFunction(xml) {
 							for (var w = 1; w < opciones_tag.length-nhuecos.length; w++)
 							{	
 								//Añadimos los huecos
-								//oposibles[w-1].childNodes[0].nodeValue
-								descripcion+="<input type=\"text\" name=\""+id+"\" tipo=\""+nhuecos[w-1].getAttribute("fibtype")+"\" puntos=\"\" sol=\"\" size=\"3\" maxlength=\""+parseInt(nhuecos[w-1].getAttribute("columns"))+"\"/>";
+								descripcion+="<input type=\"text\" name=\""+id+"\" tipo=\""+nhuecos[w-1].getAttribute("fibtype")+"\" sensibilidad=\""+preguntas_tag[arrayaux[i]].getElementsByTagName("fieldentry")[5].childNodes[0].nodeValue+"\" puntos=\"\" sol=\"\" size=\"3\" maxlength=\""+parseInt(nhuecos[w-1].getAttribute("columns"))+"\"/>";
 								//Vamos añadiendo el resto de enunciado
 								descripcion+=opciones_tag[w].childNodes[0].nodeValue;
 								
-							}	
+							}						
 							descripcion+="<input name=\"valida"+i+"\" type=\"button\" value=\"Validar\" onclick=\"puntuaHuecos("+id+","+i+")\"/><input name=\"borra"+i+"\" type=\"reset\" value=\"Borrar\" /></form>";
 													
 						}
@@ -110,12 +109,11 @@ function myFunction(xml) {
 											var attAnterior = document.getElementsByName(id)[q].getAttribute("sol");
 											var puntAnterior = document.getElementsByName(id)[q].getAttribute("puntos");
 											document.getElementsByName(id)[q].setAttribute("sol",attAnterior+oposibles[k].childNodes[0].nodeValue+",");
-											document.getElementsByName(id)[q].setAttribute("puntos",puntAnterior+preguntas_tag[arrayaux[i]].getElementsByTagName("setvar")[k].childNodes[0].nodeValue+",");
-											//preguntas_tag[arrayaux[i]].getElementsByTagName("setvar")[k].childNodes[0].nodeValue
+											document.getElementsByName(id)[q].setAttribute("puntos",puntAnterior+preguntas_tag[arrayaux[i]].getElementsByTagName("setvar")[k].childNodes[0].nodeValue+",");						
 										}
 									}
 								}
-								//console.log(document);
+								console.log(document);
 								flag=1; //Este flag nos permite que no se repita la pregunta de nuevo en el div_preguntas
 					}
 
@@ -304,23 +302,71 @@ function puntuarNum(iden, ent, inf, sup){
 		alert("Tu puntuación es de: "+puntuacion);
 		return true;
 }
-
+//http://www.w3schools.com/jsref/jsref_split.asp
+//https://developer.mozilla.org/es/docs/Web/JavaScript/Referencia/Objetos_globales/String/substr
+//http://www.lawebdelprogramador.com/foros/JavaScript/1429850-solucionado-Obtener-el-mayor-y-menor-valor-de-un-array-arreglo.html
+//https://developer.mozilla.org/es/docs/Web/JavaScript/Referencia/Objetos_globales/Array/indexOf
 //Funcion para puntuar una pregunta de rellenar huecos
 function puntuaHuecos(iden, ent){
-	var puntuacion=0;
+	var puntuacion = 0;
 	//Obtenemos las soluciones de los huecos
-	var opcs=document.getElementsByName(iden[0].name);
+	var opcs = document.getElementsByName(iden[0].name);
 	
-	for(var i=0; i<opcs.length;i++){
+	//Obtenemos la sensibilidad de la pregunta
+	var sensibilidad = document.getElementsByName(iden[0].name)[0].getAttribute("sensibilidad");
+
+	for(var i = 0; i < opcs.length; i++){
+		//Obtenemos los puntos de las opciones
+		var puntos = document.getElementsByName(iden[i].name)[i].getAttribute("puntos").split(",");
+		
+		//Obtenemos los opciones de la pregunta
+		var opciones = document.getElementsByName(iden[i].name)[i].getAttribute("sol").split(",");
+
+		
 		//Comprobamos si el tipo es String o no
-		if(document.getElementsByName(iden[i].name)[i].getAttribute("tipo")=="String"){
-			if(normalize(iden[i].value).toLowerCase==normalize(opcs[i].getAttribute("sol")).toLowerCase){
-				puntuacion+=parseFloat(document.getElementsByName(iden[i].name)[i].getAttribute("puntos"));
-			}
-		}
-		//Si no es de tipo Decimal
-		if(iden[i].value==opcs[i].getAttribute("sol")){
-				puntuacion+=parseFloat(document.getElementsByName(iden[i].name)[i].getAttribute("puntos"));
+	if(document.getElementsByName(iden[i].name)[i].getAttribute("tipo")=="String"){
+				
+					//Si no es sensible a mayúsculas
+					if(sensibilidad == "ci"){
+						for(var k = 0; k < opciones.length - 1; k++){
+							if(iden[i].value.toLowerCase() == opciones[k].toLowerCase()){
+							puntuacion+=parseFloat(puntos[k]);
+							break;
+							}	
+						}
+					}else
+					//Si es sensible a mayúsculas
+					if(sensibilidad == "cs"){
+						for(var k = 0; k < opciones.length - 1; k++){
+							if(iden[i].value == opciones[k]){
+							puntuacion+=parseFloat(puntos[k]);
+							break;
+							}	
+						}
+					}
+					//Si tiene distancia de Levenshtein
+					else {
+						var dist = parseInt(sensibilidad.substr(1,1)); //Valor de distancia de Levenshtein para esta pregunta
+						var levens = [];
+						for(var k = 0; k < opciones.length - 1; k++){
+						levens [k] = getEditDistance(iden[i].value, opciones[k]); //Distancia Levenshtein entre las dos palabras
+						}
+						var min = Math.min.apply(null, levens); //Mínimo del vector
+						var indice = levens.indexOf(min,0); //Índice del valor mínimo encontrado
+							if(min == dist){
+								puntuacion+=parseFloat(puntos[indice]);
+							}
+					}
+										
+	}
+			//Si no es de tipo String
+			if(document.getElementsByName(iden[i].name)[i].getAttribute("tipo") != "String"){
+				for(var k = 0; k < opciones.length - 1; k++){
+					if(iden[i].value == opciones[k]){
+							puntuacion+=parseFloat(puntos[k]);
+							break;
+					}
+				}
 			}
 			//Deshabilitamos el cuadro de texto
 		document.getElementsByName(iden[i].name)[i].disabled = true;	
@@ -329,6 +375,7 @@ function puntuaHuecos(iden, ent){
 		document.getElementsByName("valida"+ent)[0].disabled = true;
 		document.getElementsByName("borra"+ent)[0].disabled = true;
 		alert("Tu puntuación es de: "+puntuacion);
+
 return true;	
 }
 
