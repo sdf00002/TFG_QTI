@@ -1,0 +1,213 @@
+<html>							
+<head>
+<meta charset="utf-8" />
+<script type="text/javascript" src="../../_ejs_library/scripts/creaPreguntas.js"></script>
+<script type="text/javascript" src="../../_ejs_library/scripts/RTE.js"></script>
+<script type="text/javascript" src="../../_ejs_library/scripts/APIWrapper.js"></script>
+<script type="text/javascript" src="../../_ejs_library/scripts/smoke.js"></script>
+<link href="../../_ejs_library/css/estilo.css" rel="stylesheet" type="text/css">
+<link href="../../_ejs_library/css/smoke.css" rel="stylesheet" type="text/css">
+<script type="text/javascript">
+    var miRTE = new RTE("2004");
+	var terminated = false;	
+	var puntuacion=0;
+	var total=0;
+	var nPreguntas = 4;
+	var FecInicio= 0;
+	var ids = new Array();
+	
+    /**********************************************************************
+    **  Function: loadPage()
+    **  Description: This is called when a SCO is first loaded in the
+    **               browser (onload()).  It finds the API if it was not
+    **               already located and calls Initialize().  In
+    **               the terminated global variable is set to false
+    **               indicating that the SCO is not yet finished.
+    **********************************************************************/
+    function loadPage() {
+        var result = doInitialize();
+        doSetValue("cmi.completion_status", "incomplete");
+		FecInicio = miRTE.startTimeStamp;
+    }
+   
+
+    /**********************************************************************
+    **  Function: unloadPage()
+    **  Description: This function is called in the case that the user
+    **               does not finish the SCO "gracefully".  For example, 
+    **               the user may click the "continue" button before
+    **               submitting an answer to a question.  In this case,
+    **               this function is called as part of the page unloading.
+    **               This function ensures that Terminate() is called
+    **               even if the user closes the SCO window or navigates
+    **               away before finishing the SCO.
+    **********************************************************************/
+    function unloadPage() {
+     if (terminated != true) {
+	  miRTE.setExit("normal");
+	  miRTE.setSessionTime();
+	  doTerminate();
+      terminated = true;
+     }
+    }
+	
+	function terminar(){
+		miRTE.setScoreMax(total);
+		miRTE.setScoreMin(0);
+		miRTE.setScoreRaw(puntuacion);
+		miRTE.commit();
+	  miRTE.setCompletionStatus("completed");
+	  if (puntuacion>total/2)
+		doSetValue("cmi.success_status","passed");
+		else
+			doSetValue("cmi.success_status","failed");
+	  miRTE.setNavRequest("{target=SCO3}jump");
+	  doTerminate();
+      terminated = true;
+	}
+	
+		function subir(){
+		miRTE.setScoreMax(total);
+		miRTE.setScoreMin(0);
+		miRTE.setScoreRaw(puntuacion);
+		miRTE.commit();
+	  miRTE.setCompletionStatus("completed");
+	  if (puntuacion>=total/2)
+		doSetValue("cmi.success_status","passed");
+		else
+			doSetValue("cmi.success_status","failed");
+	}
+	
+	function getI(id){
+	var cont = miRTE.getInteractionsCount();
+		for(var q=0; q < cont; q++){
+		if(id.localeCompare(miRTE.getInteractionsId(q))==0)
+		return q;
+		break;
+		}
+	}
+	
+	function ponFilas(n){
+	for (var i=9; i<n+9;i++){
+	var id = "PE"+i;
+	var preg = i-8;
+	document.write("<tr><td width=\"30%\" align=\"left\"><p class=\"fila\">Respuesta pregunta "+preg+":</p></td><td width=\"70%\" align=\"left\" colspan=\"2\"><p align=\"left\" id=\""+id+"\"/></p></td></tr>");
+	}
+	}
+	
+	function ponRespuestas(n){
+	for (var i=0; i<n;i++){
+	var ent = getI(ids[i]);
+	var res = miRTE.getInteractionsResponse(ent);
+	var aux = 9 + i;
+	var preg = "PE"+ aux;
+	document.getElementById("PE"+aux).innerHTML = res;
+	}
+	}
+	
+	function mostrar(){
+		document.getElementById("resultados").style.display = "block";
+		document.getElementById("PE2").innerHTML = timeStamp("2004");	
+	}
+	
+		function maximo(){
+		document.getElementById("PE3").innerHTML = miRTE.getInteractionsCount();
+		//document.getElementById("PE3").innerHTML = miRTE.getInteractionsResponse(0);
+		document.getElementById("PE4").innerHTML = miRTE.getCompletionStatus();
+		document.getElementById("PE5").innerHTML = miRTE.getSuccessStatus();
+		document.getElementById("PE6").innerHTML = miRTE.getScoreMin() + " puntos";
+        document.getElementById("PE7").innerHTML = miRTE.getScoreMax() + " puntos";
+		document.getElementById("PE8").innerHTML = miRTE.getScoreRaw() + " puntos";	
+	}
+	
+		function exitBut(i){
+		var destino="";
+		switch(i) {
+			case 1:
+				destino="{target=SCO3}jump";
+				break;
+			case 2:
+				destino="exitAll";
+				break;
+			case 3:
+				destino="{target=SCO1}jump";
+				break;
+			default:
+				destino="{target=SCO1}jump";
+		}
+		miRTE.setNavRequest(destino);
+		miRTE.terminate();
+		terminated = true;
+	}
+</script>
+</head>
+<body onLoad="loadPage()" onbeforeunload="unloadPage()">
+<table id="tabla" align="center">
+<th bgcolor="ddb10a" height="112"><img src="../../_ejs_library/images/uja.png" width="140" height="112" align="left"></th>
+<tr>
+<script type="text/javascript">
+loadXMLDoc('1465148791__1946__qti_839940.xml',nPreguntas);
+</script>
+</tr>
+</table>
+<p align="center"><input name="puntua" type="button" value="TERMINAR TEST" onclick="subir(); mostrar()" class="botonLMS"/></p>
+<div id="resultados" style="display:none;">
+	<table style="background-color:#FAE38E" align="center" width="90%" border="1">
+	<tr>
+			<td align="center" class="estiloTitulo" style="background-color:#00a65d" colspan="3">Resultados del Test</td>
+		</tr>
+		<tr>
+			<td width="30%" align="left"><p class="fila">Alumno:</p></td>
+			<td width="70%" align="left" colspan="2"><p align="left" id="PE0"/><script type="text/javascript">miRTE.getLearnerName();document.write(miRTE.learnerName);</script></p></td>
+		</tr>
+		<tr>
+			<td align="left"><p class="fila">Fecha de inicio:</p></td>
+			<td align="left" colspan="2"><p align="left" id="PE1"/><script type="text/javascript">document.write(miRTE.startTimeStamp);</script></p></td>
+		</tr>
+		<tr>
+			<td width="30%" align="left"><p class="fila">Fecha de finalizaci&oacuten: </p></td>
+			<td width="70%" align="left" colspan="2"><p align="left" id="PE2"/><script type="text/javascript"></script></p></td>
+		</tr>
+		<tr>
+			<td align="left"><p class="fila">Contador de interacciones:</p></td>
+			<td align="left" colspan="2"><p align="left" id="PE3"/></p></td>
+		</tr>
+		<tr>
+			<td align="left"><p class="fila">Estado de terminaci&oacuten:</p></td>
+			<td align="left" colspan="2"><p align="left" id="PE4"/></p></td>
+		</tr>
+		<tr>
+			<td align="left"><p class="fila">Calificaci&oacuten: </p></td>
+			<td align="left" colspan="2"><p align="left" id="PE5"/></p></td>
+		</tr>
+		<tr>
+			<td align="left"><p class="fila">Puntuaci&oacuten m&iacutenima: </p></td>
+			<td align="left" colspan="2"><p align="left" id="PE6"/></p></td>
+		</tr>
+		<tr>
+			<td align="left"><p class="fila">Puntuaci&oacuten m&aacutexima: </p></td>
+			<td align="left" colspan="2"><p align="left" id="PE7"/></p></td>
+		</tr>
+		<tr>
+			<td align="left"><p class="fila">Puntuaci&oacuten obtenida:</p></td>
+			<td align="left" colspan="2"><p align="left" id="PE8"/></p></td>
+		</tr>
+		<script>ponFilas(nPreguntas);</script>
+		<tr>
+		<td colspan="3" align="center"><input name="muestra" type="button" value="MOSTRAR RESULTADOS" class="botonMostrar" onclick="maximo()"/></td>
+		</tr>
+		</table>
+		<table align="center" style="background-color:#ddb10a">
+		<tr>
+			<td align="left"><input onclick="exitBut(3)" type="button" value="Ir a inicio" class="boton"/></td>
+			<td align="center"><input onclick="exitBut(2)" type="button" value="Finalizar" class="boton"/></td>
+			<td align="right"><input onclick="exitBut(1)" type="button" value="Ir a explicación" class="botonExp"/>
+		</tr>
+		</table>
+</div>
+<div class="cuadroFijo">
+<p align="center" class="parrafoPuntos">Tu puntuaci&oacuten </p>
+<center><input type="text" id="tupuntuacion" value="tupuntuacion" size="3" maxlength="3" readonly="true" class="altura puntos"/></center>
+</div>
+</body>
+</html>
